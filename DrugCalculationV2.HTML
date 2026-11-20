@@ -1,0 +1,1389 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Drug Calculation - Alstrin </title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Inter Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        @media print {
+            body { background: white; color: black; }
+            .no-print { display: none; }
+            .print-shadow { box-shadow: none !important; border: 1px solid #cbd5e1 !important; }
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-900 h-full flex flex-col antialiased">
+
+    <!-- Top Header -->
+    <header class="bg-slate-900 text-white shadow-md no-print">
+        <div class="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row justify-between items-center gap-4">
+            <div class="flex items-center space-x-3">
+                <div class="p-2.5 bg-rose-600 rounded-xl shadow-inner flex items-center justify-center">
+                    <i data-lucide="activity" class="w-7 h-7 text-white"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold tracking-tight">Drug Calculation</h1>
+                    <p class="text-xs text-slate-400" id="headerSubtitle">Alstrin Creation</p>
+                </div>
+            </div>
+            
+            <!-- Drug Selector & Controls -->
+            <div class="flex flex-wrap items-center gap-3">
+                <div class="flex items-center space-x-2 bg-slate-800 px-3 py-1.5 rounded-xl border border-slate-700">
+                    <label for="globalDrugSelector" class="text-xs font-semibold text-slate-300">Select Drug:</label>
+                    <select id="globalDrugSelector" onchange="switchDrugProtocol(this.value)" class="bg-slate-900 text-white text-xs font-bold px-2.5 py-1 rounded-lg border border-slate-600 outline-none focus:ring-2 focus:ring-rose-500">
+                        <!-- Populated dynamically in alphabetical order from DRUG_PROTOCOLS -->
+                    </select>
+                </div>
+
+                <span id="headerBadge" class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-emerald-900/60 text-emerald-300 border border-emerald-700/50">
+                    <span class="w-2 h-2 mr-1.5 bg-emerald-400 rounded-full animate-pulse"></span>
+                    Standard Dilution: 25,000 units / 50 mL NaCl (500 units/mL)
+                </span>
+                
+                <button onclick="window.print()" class="inline-flex items-center px-3.5 py-2 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition shadow-sm">
+                    <i data-lucide="printer" class="w-4 h-4 mr-1.5"></i> Print Report
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Navigation Tabs -->
+    <nav class="bg-white border-b border-slate-200 shadow-xs no-print">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex space-x-8 overflow-x-auto">
+            <button onclick="switchTab('initial')" id="tabBtnInitial" class="py-4 px-1 border-b-2 border-rose-600 font-semibold text-sm text-rose-600 flex items-center space-x-2 whitespace-nowrap">
+                <i data-lucide="play-circle" class="w-4 h-4"></i>
+                <span>Initial Dosing Calculator</span>
+            </button>
+            <button onclick="switchTab('followup')" id="tabBtnFollowup" class="py-4 px-1 border-b-2 border-transparent font-medium text-sm text-slate-500 hover:text-slate-700 hover:border-slate-300 flex items-center space-x-2 whitespace-nowrap">
+                <i data-lucide="sliders" class="w-4 h-4"></i>
+                <span id="tab2Label">APTT Sliding Scale Adjustment</span>
+            </button>
+            <button onclick="switchTab('reference')" id="tabBtnReference" class="py-4 px-1 border-b-2 border-transparent font-medium text-sm text-slate-500 hover:text-slate-700 hover:border-slate-300 flex items-center space-x-2 whitespace-nowrap">
+                <i data-lucide="table" class="w-4 h-4"></i>
+                <span>Reference Protocol Matrix</span>
+            </button>
+            <button onclick="switchTab('safety')" id="tabBtnSafety" class="py-4 px-1 border-b-2 border-transparent font-medium text-sm text-slate-500 hover:text-slate-700 hover:border-slate-300 flex items-center space-x-2 whitespace-nowrap">
+                <i data-lucide="shield-alert" class="w-4 h-4"></i>
+                <span>Safety & Antidote Guidelines</span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- Main Container -->
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 py-6 sm:px-6 lg:px-8">
+
+        <!-- TAB 1: INITIAL DOSING CALCULATOR -->
+        <div id="tabInitial" class="space-y-6">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                
+                <!-- Input Panel -->
+                <div class="lg:col-span-5 bg-white rounded-2xl shadow-sm border border-slate-200 p-6 space-y-4">
+                    <h2 class="text-base font-semibold text-slate-900 flex items-center pb-3 border-b border-slate-100">
+                        <i data-lucide="user-pen" class="w-5 h-5 mr-2 text-rose-600"></i>
+                        <span id="panelTitleText">Patient Initial Parameters</span>
+                    </h2>
+
+                    <!-- Heparin / Sliding-Scale Protocol Inputs -->
+                    <div id="heparinInputsGroup" class="space-y-4">
+                        <div>
+                            <label for="initWeight" class="block text-sm font-medium text-slate-700 mb-1.5">
+                                Patient Weight <span class="text-rose-500">*</span>
+                            </label>
+                            <div class="relative rounded-lg shadow-sm">
+                                <input type="number" id="initWeight" value="75" min="20" max="250" step="0.5"
+                                    class="block w-full rounded-lg border border-slate-300 py-2.5 pl-4 pr-12 text-slate-900 placeholder:text-slate-400 focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20 sm:text-sm">
+                                <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-slate-500 font-medium text-sm">
+                                    kg
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Weight-Based Micro-Infusion Inputs (Dopamine, Dobutamine, Adrenaline, Noradrenaline, etc.) -->
+                    <div id="inotropesInputsGroup" class="space-y-4" style="display: none;">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1.5" for="availDose">Available Dose (mg)</label>
+                            <input type="number" id="availDose" value="200" step="any" min="0" 
+                                class="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-rose-500 focus:border-rose-500 outline-none transition text-slate-900 font-medium text-base">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1.5" for="inotropeWeight">Body Weight (kg)</label>
+                            <input type="number" id="inotropeWeight" value="70" step="any" min="0" 
+                                class="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-rose-500 focus:border-rose-500 outline-none transition text-slate-900 font-medium text-base">
+                        </div>
+
+                        <!-- Dynamic Protocol Info Banner for Micro-Infusion Drugs -->
+                        <div id="microProtocolNote" class="rounded-xl p-3.5 border text-xs space-y-1.5" style="display: none;">
+                            <div id="microProtocolNoteTitle" class="font-bold flex items-center">
+                                <i data-lucide="info" class="w-4 h-4 mr-1.5 shrink-0"></i>
+                                <span id="microProtocolNoteHeading">Protocol Parameters</span>
+                            </div>
+                            <ul id="microProtocolNoteList" class="list-disc list-inside space-y-0.5 pl-1"></ul>
+                        </div>
+                    </div>
+
+                    <div id="protocolInfoBox" class="bg-indigo-50/60 rounded-xl p-4 border border-indigo-100 space-y-3 text-xs text-indigo-900">
+                        <div class="flex items-start space-x-2">
+                            <i data-lucide="info" class="w-4 h-4 text-indigo-600 flex-shrink-0 mt-0.5"></i>
+                            <div>
+                                <span class="font-semibold block mb-0.5">Protocol Rule Enforcement:</span>
+                                <ul class="list-disc list-inside space-y-1 text-indigo-800">
+                                    <li>Concentration: 25,000 units / 50 mL (1 mL = 500 units)</li>
+                                    <li>Bolus: 60 units/kg (Max cap: 5,000 units)</li>
+                                    <li>Initial Infusion: 12 units/kg/hr (Max cap: 1,000 units/hr)</li>
+                                    <li>Check APTT exactly 6 hours after first bolus</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Output Panel -->
+                <div class="lg:col-span-7 space-y-6">
+                    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 relative overflow-hidden">
+                        <div id="outputTopBanner" class="absolute top-0 left-0 right-0 h-1.5 bg-rose-600"></div>
+                        
+                        <div class="flex items-center justify-between mb-5">
+                            <span id="outputBadgeTitle" class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-rose-100 text-rose-800">
+                                Initial Commencing Protocol
+                            </span>
+                            <span id="outputConcentrationSub" class="text-xs text-slate-500 font-medium">Standard Concentration: 500 units/mL</span>
+                        </div>
+
+                        <!-- Heparin Output View -->
+                        <div id="heparinOutputView" class="space-y-6">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div class="p-4 rounded-xl bg-slate-50 border border-slate-200">
+                                    <span class="text-xs font-medium text-slate-500 block mb-1">Initial IV Bolus Dose</span>
+                                    <div class="flex items-baseline space-x-2">
+                                        <span id="initBolusUnits" class="text-2xl font-bold text-slate-900">4,500</span>
+                                        <span class="text-xs font-semibold text-slate-600">units</span>
+                                    </div>
+                                    <div class="text-xs font-bold text-rose-600 mt-0.5">
+                                        Volume: <span id="initBolusMl">9.00</span> mL
+                                    </div>
+                                    <p id="initBolusSub" class="text-xs text-slate-500 mt-1">60 units/kg (Capped at max 5,000 units)</p>
+                                </div>
+
+                                <div class="p-4 rounded-xl bg-slate-50 border border-slate-200">
+                                    <span class="text-xs font-medium text-slate-500 block mb-1">Repeat APTT Check</span>
+                                    <div class="flex items-center space-x-2 mt-1">
+                                        <i data-lucide="clock" class="w-5 h-5 text-indigo-600"></i>
+                                        <span class="text-lg font-bold text-slate-900">In 6 Hours</span>
+                                    </div>
+                                    <p class="text-xs text-slate-500 mt-1">6 hours after the first bolus</p>
+                                </div>
+                            </div>
+
+                            <div class="p-4 rounded-xl border border-slate-200 bg-slate-50/50">
+                                <h4 class="text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">Action Summary</h4>
+                                <p id="initActionDesc" class="text-sm font-medium text-slate-900 leading-relaxed">
+                                    Give 60 units/kg IV bolus (max 5000 units), then commence initial infusion at 12 units/kg/hour (max 1000 units/hour).
+                                </p>
+                            </div>
+
+                            <div class="p-4 rounded-xl bg-indigo-50 border border-indigo-100 grid grid-cols-1 sm:grid-cols-3 gap-4 items-center">
+                                <div>
+                                    <span class="text-xs font-bold text-indigo-800 uppercase tracking-wide block mb-0.5">Infusion Rate</span>
+                                    <p class="text-xs text-indigo-600">Weight: <span id="initWeightEcho">75</span> kg</p>
+                                </div>
+                                <div class="text-center sm:text-right">
+                                    <span id="initRateUnits" class="text-lg font-extrabold text-indigo-900">12.0</span>
+                                    <span class="text-xs font-semibold text-indigo-700 block">units/kg/hr</span>
+                                    <span class="text-xs text-indigo-600 font-medium">(<span id="initTotalUnitsHr">900</span> units/hr)</span>
+                                </div>
+                                <div class="text-center sm:text-right border-t sm:border-t-0 sm:border-l border-indigo-200 pt-3 sm:pt-0 sm:pl-4">
+                                    <span id="initRateMl" class="text-2xl font-extrabold text-rose-600">1.80</span>
+                                    <span class="text-xs font-semibold text-rose-700 block">mL / hr</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Micro-Infusion Output View -->
+                        <div id="inotropesOutputView" class="space-y-6" style="display: none;">
+                            <!-- Calculated Diluent Preview Box -->
+                            <div id="inotropePreviewBox" class="bg-blue-50 p-4 rounded-xl border border-blue-100 space-y-3">
+                                <div class="flex items-baseline justify-between">
+                                    <div>
+                                        <span id="previewVolLabel" class="block text-xs font-semibold text-blue-800 uppercase tracking-wider mb-0.5">Calculated Diluent Volume</span>
+                                        <span id="previewVolume" class="text-3xl font-extrabold text-blue-900">-- mL</span>
+                                        <span id="previewSubRatio" class="block text-xs font-bold text-slate-700 mt-1">(1ml=1mcg)</span>
+                                    </div>
+                                    <div class="text-right">
+                                        <span id="previewRatioLabel" class="block text-xs font-semibold text-blue-800 uppercase tracking-wider mb-0.5">Infusion Ratio</span>
+                                        <span id="previewRatio" class="text-base sm:text-lg font-bold text-blue-700 bg-blue-100 px-3 py-1 rounded-lg">1 mL = 1 mcg</span>
+                                    </div>
+                                </div>
+                                <div class="flex items-center justify-between pt-2 border-t border-blue-200/60">
+                                    <span id="volumeRuleBadge" class="text-xs bg-blue-200 text-blue-800 px-2.5 py-0.5 rounded-full font-medium">Standard (≤ 50 mL)</span>
+                                    <span id="formulaDisplay" class="text-[11px] text-blue-600 font-mono">Formula: (mg × 1000) / (wt × 60 × 1)</span>
+                                </div>
+                            </div>
+
+                            <!-- Live Formula Verification Breakdown Box -->
+                            <div class="bg-slate-900 text-slate-100 p-4 rounded-xl border border-slate-700 space-y-2.5 font-mono text-xs">
+                                <div class="flex justify-between items-center text-slate-400 border-b border-slate-800 pb-1.5">
+                                    <span class="font-bold tracking-wider uppercase text-[11px]">Formula Verification</span>
+                                    <span class="text-sky-400 text-[11px]">Live Breakdown</span>
+                                </div>
+                                <div class="text-center space-y-1 py-1">
+                                    <div class="text-slate-300">Available Dose (mg) × 1000</div>
+                                    <div class="border-t border-slate-700 w-3/4 mx-auto"></div>
+                                    <div class="text-emerald-400">Body Weight (kg) × 60 mins × <span id="fbFactorText">1 mcg</span></div>
+                                </div>
+                                <div class="border-t border-slate-800 pt-2 text-center space-y-1">
+                                    <div class="text-slate-400 text-[11px]">SUBSTITUTED VALUES:</div>
+                                    <div><span id="fbDose">200</span> × 1000 / (<span id="fbWeight">70</span> × 60 × <span id="fbFactorVal">1</span>)</div>
+                                    <div class="text-sm font-bold text-white pt-1">
+                                        = <span id="fbTotalMcg" class="text-sky-300">200,000</span> mcg ÷ <span id="fbDivisor" class="text-emerald-400">4,200</span> = <span id="fbRawResult" class="text-amber-300">47.62 mL</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <button id="confirmDilutionBtn" onclick="confirmInotropeDilution()" 
+                                class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-xl shadow-md transition duration-200 flex items-center justify-center space-x-2">
+                                <span>Confirm Dilution & Proceed to Ordered Dose</span>
+                                <i data-lucide="chevron-right" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- TAB 2: FOLLOW-UP / SLIDING SCALE ADJUSTMENT -->
+        <div id="tabFollowup" class="space-y-6" style="display: none;">
+            <div id="heparinFollowupContainer" class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                <!-- Inputs -->
+                <div class="lg:col-span-5 bg-white rounded-2xl shadow-sm border border-slate-200 p-6 space-y-5">
+                    <h2 class="text-base font-semibold text-slate-900 flex items-center pb-3 border-b border-slate-100">
+                        <i data-lucide="sliders" class="w-5 h-5 mr-2 text-rose-600"></i>
+                        Post-Bolus Evaluation
+                    </h2>
+
+                    <div>
+                        <label for="followupWeight" class="block text-sm font-medium text-slate-700 mb-1.5">
+                            Patient Weight (kg) <span class="text-rose-500">*</span>
+                        </label>
+                        <input type="number" id="followupWeight" value="75" min="20" max="250" step="0.5"
+                            class="block w-full rounded-lg border border-slate-300 py-2.5 px-4 text-slate-900 focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20 sm:text-sm">
+                    </div>
+
+                    <div>
+                        <label for="currentRate" class="block text-sm font-medium text-slate-700 mb-1.5">
+                            Current Infusion Rate (units/kg/hr)
+                        </label>
+                        <input type="number" id="currentRate" value="12" min="0" max="50" step="0.5"
+                            class="block w-full rounded-lg border border-slate-300 py-2.5 px-4 text-slate-900 focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20 sm:text-sm">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-2">
+                            Select Current APTT Ratio <span class="text-rose-500">*</span>
+                        </label>
+                        <div class="grid grid-cols-2 gap-2" id="apttButtons">
+                            <button type="button" data-range="<1.2" class="aptt-btn px-3 py-2.5 text-xs font-semibold rounded-xl border border-slate-200 bg-white hover:border-rose-500 hover:text-rose-600 transition text-center flex flex-col items-center justify-center">
+                                <span class="text-slate-500 font-normal">Ratio</span>
+                                <span class="text-sm font-bold">&lt; 1.2</span>
+                            </button>
+                            <button type="button" data-range="1.2-1.4" class="aptt-btn px-3 py-2.5 text-xs font-semibold rounded-xl border border-slate-200 bg-white hover:border-rose-500 hover:text-rose-600 transition text-center flex flex-col items-center justify-center">
+                                <span class="text-slate-500 font-normal">Ratio</span>
+                                <span class="text-sm font-bold">1.2 – 1.4</span>
+                            </button>
+                            <button type="button" data-range="1.5-2.5" class="aptt-btn px-3 py-2.5 text-xs font-semibold rounded-xl border-2 border-emerald-500 bg-emerald-50 text-emerald-900 transition text-center flex flex-col items-center justify-center shadow-sm" data-selected="true">
+                                <span class="text-emerald-700 font-medium">Therapeutic</span>
+                                <span class="text-sm font-bold">1.5 – 2.5</span>
+                            </button>
+                            <button type="button" data-range="2.6-3.0" class="aptt-btn px-3 py-2.5 text-xs font-semibold rounded-xl border border-slate-200 bg-white hover:border-rose-500 hover:text-rose-600 transition text-center flex flex-col items-center justify-center">
+                                <span class="text-slate-500 font-normal">Ratio</span>
+                                <span class="text-sm font-bold">2.6 – 3.0</span>
+                            </button>
+                            <button type="button" data-range="3.1-4.0" class="aptt-btn px-3 py-2.5 text-xs font-semibold rounded-xl border border-slate-200 bg-white hover:border-rose-500 hover:text-rose-600 transition text-center flex flex-col items-center justify-center">
+                                <span class="text-slate-500 font-normal">Ratio</span>
+                                <span class="text-sm font-bold">3.1 – 4.0</span>
+                            </button>
+                            <button type="button" data-range="4.1-5.0" class="aptt-btn px-3 py-2.5 text-xs font-semibold rounded-xl border border-slate-200 bg-white hover:border-rose-500 hover:text-rose-600 transition text-center flex flex-col items-center justify-center">
+                                <span class="text-slate-500 font-normal">Ratio</span>
+                                <span class="text-sm font-bold">4.1 – 5.0</span>
+                            </button>
+                            <button type="button" data-range=">5.0" class="aptt-btn col-span-2 px-3 py-2.5 text-xs font-semibold rounded-xl border border-slate-200 bg-white hover:border-rose-500 hover:text-rose-600 transition text-center flex items-center justify-center space-x-1 text-rose-700">
+                                <span>Ratio &gt; 5.0 or Bleeding Occurs</span>
+                            </button>
+                        </div>
+                        <input type="hidden" id="selectedAptt" value="1.5-2.5">
+                    </div>
+                </div>
+
+                <!-- Results Output -->
+                <div class="lg:col-span-7 space-y-6">
+                    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 relative overflow-hidden">
+                        <div id="followupBanner" class="absolute top-0 left-0 right-0 h-1.5 bg-emerald-500"></div>
+                        
+                        <div class="flex items-center justify-between mb-5">
+                            <span id="followupBadge" class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800">
+                                Therapeutic Range (1.5 - 2.5)
+                            </span>
+                            <span class="text-xs text-slate-500 font-medium">Sliding Scale Adjustment</span>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+                            <div class="p-4 rounded-xl bg-slate-50 border border-slate-200">
+                                <span class="text-xs font-medium text-slate-500 block mb-1">Additional Bolus Dose</span>
+                                <div class="flex items-baseline space-x-2">
+                                    <span id="followupBolusText" class="text-2xl font-bold text-slate-900">NIL</span>
+                                </div>
+                                <div id="followupBolusMlContainer" class="text-xs font-bold text-rose-600 mt-0.5" style="display: none;">
+                                    Volume: <span id="followupBolusMl">0.00</span> mL
+                                </div>
+                                <p id="followupBolusSub" class="text-xs text-slate-500 mt-1">No additional bolus required</p>
+                            </div>
+
+                            <div class="p-4 rounded-xl bg-slate-50 border border-slate-200">
+                                <span class="text-xs font-medium text-slate-500 block mb-1">Repeat APTT Check</span>
+                                <div class="flex items-center space-x-2 mt-1">
+                                    <i data-lucide="clock" class="w-5 h-5 text-indigo-600"></i>
+                                    <span id="followupRepeatText" class="text-lg font-bold text-slate-900">In 12 Hours</span>
+                                </div>
+                                <p class="text-xs text-slate-500 mt-1">Next blood sample timing</p>
+                            </div>
+                        </div>
+
+                        <div class="p-4 rounded-xl border border-slate-200 bg-slate-50/50 mb-6">
+                            <h4 class="text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">Protocol Action Required</h4>
+                            <p id="followupActionText" class="text-sm font-medium text-slate-900 leading-relaxed">
+                                Maintain infusion at current rate.
+                            </p>
+                        </div>
+
+                        <div class="p-4 rounded-xl bg-indigo-50 border border-indigo-100 grid grid-cols-1 sm:grid-cols-3 gap-4 items-center">
+                            <div>
+                                <span class="text-xs font-bold text-indigo-800 uppercase tracking-wide block mb-0.5">New Infusion Rate</span>
+                                <p class="text-xs text-indigo-600">Concentration: 500 units/mL</p>
+                            </div>
+                            <div class="text-center sm:text-right">
+                                <span id="followupRateUnits" class="text-lg font-extrabold text-indigo-900">12.0</span>
+                                <span class="text-xs font-semibold text-indigo-700 block">units/kg/hr</span>
+                                <span class="text-xs text-indigo-600 font-medium">(<span id="followupTotalUnitsHr">900</span> units/hr)</span>
+                            </div>
+                            <div class="text-center sm:text-right border-t sm:border-t-0 sm:border-l border-indigo-200 pt-3 sm:pt-0 sm:pl-4">
+                                <span id="followupRateMl" class="text-2xl font-extrabold text-rose-600">1.80</span>
+                                <span class="text-xs font-semibold text-rose-700 block">mL / hr</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Micro-Infusion Step 2 View -->
+            <div id="inotropesStep2Container" class="space-y-6" style="display: none;">
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 space-y-5">
+                    <div class="border-b border-slate-100 pb-3 flex justify-between items-center">
+                        <div>
+                            <h3 class="text-sm font-bold uppercase tracking-wider text-emerald-600">Step 2: Ordered Dose & Infusion Outputs</h3>
+                            <p class="text-xs text-slate-500 mt-0.5">Dilution locked. Enter ordered dose and dual-check verification.</p>
+                        </div>
+                        <button onclick="editInotropeDilution()" class="text-xs text-blue-600 hover:underline font-medium bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-200 no-print">
+                            &larr; Edit Dilution
+                        </button>
+                    </div>
+
+                    <!-- Confirmed Dilution Summary Pill -->
+                    <div class="bg-slate-100 p-3 rounded-xl flex flex-wrap justify-between items-center gap-2 text-xs text-slate-700">
+                        <div>
+                            <span class="font-semibold">Medication:</span> <span id="confirmedDrugNameText" class="font-bold text-slate-900">--</span>
+                        </div>
+                        <div>
+                            <span class="font-semibold">Diluent Volume:</span> <span id="confirmedVolumeText" class="font-bold text-slate-900">-- mL</span>
+                        </div>
+                        <div>
+                            <span class="font-semibold">Available Drug:</span> <span id="confirmedDoseText" class="font-bold text-slate-900">-- mg</span>
+                        </div>
+                    </div>
+
+                    <!-- Ordered Dose Input -->
+                    <div>
+                        <div class="flex flex-wrap justify-between items-center gap-2 mb-1.5">
+                            <label class="block text-sm font-medium text-slate-700" for="orderedDose">Ordered Dose (mcg/kg/min)</label>
+                            <div class="flex items-center space-x-2">
+                                <span id="doseRangeHint" class="text-xs text-slate-500"></span>
+                                <div id="quickDosePresets" class="hidden flex items-center space-x-1.5"></div>
+                            </div>
+                        </div>
+                        <input type="number" id="orderedDose" value="5" step="any" min="0" oninput="calculateInotropeInfusion()"
+                            class="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition text-slate-900 font-medium text-base">
+                        <div id="maxDoseAlert" class="hidden mt-2 text-xs font-semibold text-rose-600 flex items-center">
+                            <i data-lucide="alert-circle" class="w-4 h-4 mr-1 shrink-0"></i>
+                            <span id="maxDoseAlertText">Warning: Ordered dose exceeds standard maximum dose!</span>
+                        </div>
+                    </div>
+
+                    <!-- Results Dashboard -->
+                    <div class="bg-slate-50 rounded-xl p-4 border border-slate-200 space-y-4">
+                        <div class="grid grid-cols-1 gap-3">
+                            <div class="bg-emerald-600 text-white rounded-xl p-4 text-center shadow-inner">
+                                <span class="block text-[11px] uppercase tracking-wider text-emerald-100 font-medium">Calculated Infusion Rate</span>
+                                <span id="resInfusionRateMl" class="text-2xl font-extrabold tracking-tight">--</span>
+                                <span class="text-xs font-medium text-emerald-100"> mL/hr</span>
+                            </div>
+                        </div>
+
+                        <!-- Safety Disclaimer Banner -->
+                        <div class="bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-start space-x-2">
+                            <i data-lucide="alert-triangle" class="w-5 h-5 text-amber-600 shrink-0 mt-0.5"></i>
+                            <div class="text-xs text-amber-800">
+                                <span class="font-bold">CRITICAL SAFETY DISCLAIMER:</span> Please re-check all calculations and pump settings independently prior to infusion.
+                            </div>
+                        </div>
+
+                        <!-- Time Duration -->
+                        <div class="bg-blue-50 border border-blue-200 rounded-xl p-3.5 text-center">
+                            <span class="block text-[11px] font-bold text-blue-800 uppercase tracking-wider">Estimated Run Duration</span>
+                            <span id="resDuration" class="text-lg font-extrabold text-blue-900 mt-0.5 block">--</span>
+                        </div>
+                    </div>
+
+                    <!-- Calibration & Double-Check Protocol -->
+                    <div class="bg-slate-100 p-4 rounded-xl border border-slate-200 space-y-3">
+                        <h4 class="text-xs font-bold uppercase tracking-wider text-slate-700">Calibration & Dual-Verification (Check 2 Times)</h4>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs font-medium text-slate-600 mb-1" for="check1Input">Check 1 Rate (mL/hr)</label>
+                                <input type="number" id="check1Input" placeholder="Enter 1st check" step="any" oninput="verifyCalibrationMatch()" class="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm bg-white">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-600 mb-1" for="check2Input">Check 2 Rate (mL/hr)</label>
+                                <input type="number" id="check2Input" placeholder="Enter 2nd check" step="any" oninput="verifyCalibrationMatch()" class="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm bg-white">
+                            </div>
+                        </div>
+                        <div id="matchStatus" class="text-xs font-medium text-slate-500">Status: Awaiting dual-check inputs...</div>
+
+                        <div class="pt-2 border-t border-slate-200 space-y-2">
+                            <label class="block text-xs font-medium text-slate-700" for="calibratorName">Calibrator / Verifier Name</label>
+                            <input type="text" id="calibratorName" placeholder="Enter clinician full name" class="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm bg-white">
+                        </div>
+
+                        <div id="printMetaSection" class="hidden text-xs text-slate-600 pt-3 border-t border-slate-300 space-y-1">
+                            <p><strong>Medication:</strong> <span id="printMedName">Infusion</span></p>
+                            <p><strong>Calculated Target Rate:</strong> <span id="printCalculatedRate"></span> mL/hr</p>
+                            <p><strong>Check 1 Input:</strong> <span id="printCheck1"></span> mL/hr</p>
+                            <p><strong>Check 2 Input:</strong> <span id="printCheck2"></span> mL/hr</p>
+                            <p><strong>Calibration Date & Time:</strong> <span id="printTimestamp"></span></p>
+                            <p><strong>Calibrated By:</strong> <span id="printCalibratorName"></span></p>
+                            <p><strong>Verification Status:</strong> <span id="printStatusText">Verified Twice</span></p>
+                        </div>
+
+                        <button onclick="printCalibrationReport()" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-semibold py-2.5 px-4 rounded-xl shadow-md transition duration-200 flex items-center justify-center space-x-2 no-print">
+                            <i data-lucide="printer" class="w-4 h-4"></i>
+                            <span>Print Calibration & Test Report</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 3: REFERENCE PROTOCOL MATRIX -->
+        <div id="tabReference" class="space-y-6" style="display: none;">
+            <div id="heparinReferenceView" class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 overflow-hidden">
+                <div class="mb-5 pb-3 border-b border-slate-100">
+                    <h3 class="text-base font-semibold text-slate-900 flex items-center">
+                        <i data-lucide="table" class="w-5 h-5 mr-2 text-indigo-600"></i>
+                        Complete Heparin Protocol Reference Table
+                    </h3>
+                    <p class="text-xs text-slate-500">Standard clinical sliding scale matrix (1 mL = 500 units)</p>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-slate-200 text-left text-xs">
+                        <thead class="bg-slate-100 font-semibold text-slate-700">
+                            <tr>
+                                <th class="px-4 py-3 rounded-l-lg">APTT Ratio</th>
+                                <th class="px-4 py-3">Bolus Dose</th>
+                                <th class="px-4 py-3">Action</th>
+                                <th class="px-4 py-3 rounded-r-lg">Repeat APTT Ratio</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100 text-slate-700">
+                            <tr class="hover:bg-slate-50">
+                                <td class="px-4 py-3 font-semibold text-slate-900">&lt; 1.2</td>
+                                <td class="px-4 py-3 font-medium">50 units/kg</td>
+                                <td class="px-4 py-3 text-amber-700 font-medium">Increase infusion by 3 units/kg/hour</td>
+                                <td class="px-4 py-3 font-semibold">6 hours</td>
+                            </tr>
+                            <tr class="hover:bg-slate-50">
+                                <td class="px-4 py-3 font-semibold text-slate-900">1.2 – 1.4</td>
+                                <td class="px-4 py-3 font-medium">25 units/kg</td>
+                                <td class="px-4 py-3 text-amber-700 font-medium">Increase infusion by 2 units/kg/hour</td>
+                                <td class="px-4 py-3 font-semibold">6 hours</td>
+                            </tr>
+                            <tr class="bg-emerald-50/50 hover:bg-emerald-50">
+                                <td class="px-4 py-3 font-bold text-emerald-900">1.5 – 2.5 (Therapeutic)</td>
+                                <td class="px-4 py-3 font-medium text-emerald-800">NIL</td>
+                                <td class="px-4 py-3 font-bold text-emerald-900">Maintain infusion</td>
+                                <td class="px-4 py-3 font-bold text-emerald-900">12 hours</td>
+                            </tr>
+                            <tr class="hover:bg-slate-50">
+                                <td class="px-4 py-3 font-semibold text-slate-900">2.6 – 3.0</td>
+                                <td class="px-4 py-3 font-medium">NIL</td>
+                                <td class="px-4 py-3 text-indigo-700 font-medium">Decrease infusion by 2 units/kg/hour</td>
+                                <td class="px-4 py-3 font-semibold">6 hours</td>
+                            </tr>
+                            <tr class="hover:bg-slate-50">
+                                <td class="px-4 py-3 font-semibold text-slate-900">3.1 – 4.0</td>
+                                <td class="px-4 py-3 font-medium">NIL</td>
+                                <td class="px-4 py-3 text-amber-700 font-medium">Withhold for 1 hour, then decrease infusion by 3 units/kg/hour</td>
+                                <td class="px-4 py-3 font-semibold">6 hours</td>
+                            </tr>
+                            <tr class="hover:bg-slate-50">
+                                <td class="px-4 py-3 font-semibold text-slate-900">4.1 – 5.0</td>
+                                <td class="px-4 py-3 font-medium">NIL</td>
+                                <td class="px-4 py-3 text-amber-700 font-medium">Withhold for 2 hours, then decrease infusion by 4 units/kg/hour</td>
+                                <td class="px-4 py-3 font-semibold">6 hours</td>
+                            </tr>
+                            <tr class="hover:bg-slate-50">
+                                <td class="px-4 py-3 font-semibold text-rose-700">&gt; 5.0 or bleeding occurs</td>
+                                <td class="px-4 py-3 font-medium text-rose-700">NIL</td>
+                                <td class="px-4 py-3 font-bold text-rose-700">Stop infusion, inform Doctor on-call</td>
+                                <td class="px-4 py-3 font-semibold">As requested</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="dynamicDrugReferenceView" class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 overflow-hidden space-y-4" style="display: none;">
+                <div class="pb-3 border-b border-slate-100">
+                    <h3 class="text-base font-semibold text-slate-900 flex items-center">
+                        <i data-lucide="table" class="w-5 h-5 mr-2 text-indigo-600"></i>
+                        <span id="refGuideTitle">Infusion Reference Guide</span>
+                    </h3>
+                    <p id="refGuideSubtitle" class="text-xs text-slate-500">Standard dilution & titration parameters</p>
+                </div>
+                <div id="refCardsGrid" class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs"></div>
+                <p id="refGuideBody" class="text-xs text-slate-700 leading-relaxed"></p>
+            </div>
+        </div>
+
+        <!-- TAB 4: SAFETY & ANTIDOTE GUIDELINES -->
+        <div id="tabSafety" class="space-y-6" style="display: none;">
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 space-y-6">
+                <div class="pb-3 border-b border-slate-100">
+                    <h3 class="text-base font-semibold text-slate-900 flex items-center">
+                        <i data-lucide="shield-alert" class="w-5 h-5 mr-2 text-amber-600"></i>
+                        Clinical Safety, Monitoring & Antidote Guidelines
+                    </h3>
+                    <p class="text-xs text-slate-500">Critical institutional protocols for safe infusion administration</p>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="p-5 rounded-xl bg-slate-50 border border-slate-200 space-y-3">
+                        <h4 class="text-sm font-bold text-slate-900 flex items-center">
+                            <i data-lucide="activity" class="w-4 h-4 mr-2 text-indigo-600"></i>
+                            Routine Monitoring
+                        </h4>
+                        <ul class="list-disc list-inside text-xs text-slate-700 space-y-2">
+                            <li>Re-check all vital signs and pump rate settings independently.</li>
+                            <li>Monitor lab values and patient response continuously.</li>
+                            <li>Observe closely for any adverse clinical signs.</li>
+                        </ul>
+                    </div>
+
+                    <div class="p-5 rounded-xl bg-amber-50/60 border border-amber-200/60 space-y-3">
+                        <h4 class="text-sm font-bold text-slate-900 flex items-center">
+                            <i data-lucide="alert-triangle" class="w-4 h-4 mr-2 text-amber-600"></i>
+                            Adverse Reaction Monitoring
+                        </h4>
+                        <p class="text-xs text-slate-700 leading-relaxed">
+                            Report any unexpected hemodynamic instability, bleeding, or laboratory anomalies immediately to the attending physician or medical team.
+                        </p>
+                    </div>
+
+                    <div class="md:col-span-2 p-5 rounded-xl bg-rose-50/60 border border-rose-200/60 space-y-3">
+                        <h4 class="text-sm font-bold text-rose-900 flex items-center">
+                            <i data-lucide="life-buoy" class="w-4 h-4 mr-2 text-rose-600"></i>
+                            Emergency Protocol & Reversal
+                        </h4>
+                        <p class="text-xs text-slate-700 leading-relaxed">
+                            Emergency reversal agents and support equipment must be immediately accessible in the unit whenever vasoactive or high-alert infusions are administered.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t border-slate-200 mt-auto py-4 text-center text-xs text-slate-500 no-print">
+        <p>Drug Calculation GJPMC only &bull; Cross check before administer</p>
+    </footer>
+
+    <!-- JavaScript Logic -->
+    <script>
+        /**
+         * EXTENSIBLE DRUG REGISTRY
+         * - Automatically sorted alphabetically by `label` in the dropdown.
+         * - Supports adding new drugs with different formats/protocols by adding a new entry
+         *   with its own `format` ("sliding-scale" or "micro-infusion") and formula/dosing rules.
+         */
+        const DRUG_PROTOCOLS = {
+            adrenaline: {
+                id: 'adrenaline',
+                label: 'Adrenaline Infusion',
+                shortName: 'Adrenaline',
+                format: 'micro-infusion',
+                theme: 'amber',
+                defaultAvailDose: 1,
+                unitFactor: 0.01,
+                volumeThresholdMl: 50,
+                divideWhenAboveThreshold: true,
+                subLabelAbove: '(1ml=2 mcg)',
+                subLabelBelow: '(1ml=1mcg)',
+                ratioLabelAbove: '1 mL = 0.02 mcg/kg/min',
+                ratioLabelBelow: '1 mL = 0.01 mcg/kg/min',
+                headerBadge: '<span class="w-2 h-2 mr-1.5 bg-amber-400 rounded-full"></span>Adrenaline Infusion (1 mL = 0.01 mcg/kg/min)',
+                defaultOrderedDose: 0.2,
+                doseRangeHint: 'Starting: 0.2 – 0.5 mcg/kg/min',
+                quickPresets: [0.2, 0.5],
+                maxDoseWarning: null,
+                noteHeading: 'Adrenaline Protocol Parameters',
+                noteBullets: [
+                    'Standard Ratio: <strong>1 mL = 0.01 mcg/kg/min</strong>',
+                    'Starting Dose: <strong>0.2 – 0.5 mcg/kg/min</strong>',
+                    'Dilution Rule: If volume &gt; 50 mL, divide by 2'
+                ],
+                refSubtitle: 'High-potency catecholamine micro-infusion dilution protocol',
+                refCards: [
+                    { title: 'Base Calibration', value: '1 mL = 0.01 mcg/kg/min', style: 'bg-amber-50 border-amber-100 text-amber-900' },
+                    { title: 'Starting Dose', value: '0.2 – 0.5 mcg/kg/min', style: 'bg-emerald-50 border-emerald-100 text-emerald-900' },
+                    { title: 'Volume Rule', value: 'If > 50 mL, ÷ 2 (1ml=2 mcg); else (1ml=1mcg)', style: 'bg-blue-50 border-blue-100 text-blue-900' }
+                ],
+                refBody: 'Diluent volume formula: <strong>(Available Dose in mg × 1000) / (Body Weight in kg × 60 mins × 0.01 mcg)</strong>. Verify pump rate independently before administration.'
+            },
+            dobutamine: {
+                id: 'dobutamine',
+                label: 'Dobutamine Infusion',
+                shortName: 'Dobutamine',
+                format: 'micro-infusion',
+                theme: 'purple',
+                defaultAvailDose: 250,
+                unitFactor: 1,
+                volumeThresholdMl: 50,
+                divideWhenAboveThreshold: true,
+                subLabelAbove: '(1ml=2 mcg)',
+                subLabelBelow: '(1ml=1mcg)',
+                ratioLabelAbove: '1 mL = 2 mcg/kg/min',
+                ratioLabelBelow: '1 mL = 1 mcg/kg/min',
+                headerBadge: '<span class="w-2 h-2 mr-1.5 bg-purple-400 rounded-full"></span>Dobutamine Infusion (Start: 1 | Max: 20 mcg/kg/min)',
+                defaultOrderedDose: 1,
+                doseRangeHint: 'Starting: 1 | Max: 20 mcg/kg/min',
+                quickPresets: [1, 5, 10, 20],
+                maxDoseWarning: {
+                    threshold: 20,
+                    message: 'Warning: Ordered dose exceeds standard Dobutamine maximum dose (20 mcg/kg/min)!'
+                },
+                noteHeading: 'Dobutamine Protocol Parameters',
+                noteBullets: [
+                    'Standard Ratio: <strong>1 mL = 1 mcg/kg/min</strong>',
+                    'Starting Dose: <strong>1 mcg/kg/min</strong>',
+                    'Maximum Dose: <strong>20 mcg/kg/min</strong>'
+                ],
+                refSubtitle: 'Standard dilution & dosing parameters (1 mL = 1 mcg/kg/min)',
+                refCards: [
+                    { title: 'Standard Concentration', value: '1 mL = 1 mcg/kg/min (or 2 if > 50 mL)', style: 'bg-purple-50 border-purple-100 text-purple-900' },
+                    { title: 'Starting Dose', value: '1 mcg/kg/min', style: 'bg-emerald-50 border-emerald-100 text-emerald-900' },
+                    { title: 'Maximum Dose', value: '20 mcg/kg/min', style: 'bg-rose-50 border-rose-100 text-rose-900' }
+                ],
+                refBody: 'Dobutamine diluent volume is calculated using: <strong>(Available Dose in mg × 1000) / (Body Weight in kg × 60 mins × 1 mcg)</strong>. Titrate according to clinical response and verify pump rate independently.'
+            },
+            dopamine: {
+                id: 'dopamine',
+                label: 'Dopamine Infusion',
+                shortName: 'Dopamine',
+                format: 'micro-infusion',
+                theme: 'blue',
+                defaultAvailDose: 200,
+                unitFactor: 1,
+                volumeThresholdMl: 50,
+                divideWhenAboveThreshold: true,
+                subLabelAbove: '(1ml=2 mcg)',
+                subLabelBelow: '(1ml=1mcg)',
+                ratioLabelAbove: '1 mL = 2 mcg/kg/min',
+                ratioLabelBelow: '1 mL = 1 mcg/kg/min',
+                headerBadge: '<span class="w-2 h-2 mr-1.5 bg-blue-400 rounded-full"></span>Dopamine Infusion Protocol',
+                defaultOrderedDose: 5,
+                doseRangeHint: '',
+                quickPresets: [],
+                maxDoseWarning: null,
+                noteHeading: 'Dopamine Protocol Parameters',
+                noteBullets: [
+                    'Standard Ratio: <strong>1 mL = 1 mcg/kg/min</strong>',
+                    'Formula: <strong>(mg × 1000) / (wt × 60 × 1)</strong>',
+                    'Dilution Rule: If volume &gt; 50 mL, divide by 2'
+                ],
+                refSubtitle: 'Standard concentration & titration protocol',
+                refCards: [
+                    { title: 'Standard Ratio', value: '1 mL = 1 mcg/kg/min', style: 'bg-blue-50 border-blue-100 text-blue-900' },
+                    { title: 'Volume Rule', value: 'If > 50 mL, ÷ 2 (1ml=2 mcg); else (1ml=1mcg)', style: 'bg-emerald-50 border-emerald-100 text-emerald-900' },
+                    { title: 'Verification', value: 'Dual-check pump rate required', style: 'bg-amber-50 border-amber-100 text-amber-900' }
+                ],
+                refBody: 'Dopamine is diluted using the formula: <strong>(Available Dose in mg × 1000) / (Body Weight in kg × 60 × 1 mcg)</strong>. If calculated volume exceeds 50 mL, divide by 2. Always verify pump rate independently.'
+            },
+            heparin: {
+                id: 'heparin',
+                label: 'Heparin Infusion',
+                shortName: 'Heparin',
+                format: 'sliding-scale',
+                theme: 'rose',
+                headerBadge: '<span class="w-2 h-2 mr-1.5 bg-emerald-400 rounded-full animate-pulse"></span>Standard Dilution: 25,000 units / 50 mL NaCl (500 units/mL)',
+                tab2Label: 'APTT Sliding Scale Adjustment'
+            },
+            noradrenaline: {
+                id: 'noradrenaline',
+                label: 'Noradrenaline Infusion',
+                shortName: 'Noradrenaline',
+                format: 'micro-infusion',
+                theme: 'amber',
+                defaultAvailDose: 4,
+                unitFactor: 0.01,
+                volumeThresholdMl: 50,
+                divideWhenAboveThreshold: true,
+                subLabelAbove: '(1ml=2 mcg)',
+                subLabelBelow: '(1ml=1mcg)',
+                ratioLabelAbove: '1 mL = 0.02 mcg/kg/min',
+                ratioLabelBelow: '1 mL = 0.01 mcg/kg/min',
+                headerBadge: '<span class="w-2 h-2 mr-1.5 bg-amber-400 rounded-full"></span>Noradrenaline Infusion (1 mL = 0.01 mcg/kg/min)',
+                defaultOrderedDose: 0.2,
+                doseRangeHint: 'Starting: 0.2 – 0.5 mcg/kg/min',
+                quickPresets: [0.2, 0.5],
+                maxDoseWarning: null,
+                noteHeading: 'Noradrenaline Protocol Parameters',
+                noteBullets: [
+                    'Standard Ratio: <strong>1 mL = 0.01 mcg/kg/min</strong>',
+                    'Starting Dose: <strong>0.2 – 0.5 mcg/kg/min</strong>',
+                    'Dilution Rule: If volume &gt; 50 mL, divide by 2'
+                ],
+                refSubtitle: 'High-potency catecholamine micro-infusion dilution protocol',
+                refCards: [
+                    { title: 'Base Calibration', value: '1 mL = 0.01 mcg/kg/min', style: 'bg-amber-50 border-amber-100 text-amber-900' },
+                    { title: 'Starting Dose', value: '0.2 – 0.5 mcg/kg/min', style: 'bg-emerald-50 border-emerald-100 text-emerald-900' },
+                    { title: 'Volume Rule', value: 'If > 50 mL, ÷ 2 (1ml=2 mcg); else (1ml=1mcg)', style: 'bg-blue-50 border-blue-100 text-blue-900' }
+                ],
+                refBody: 'Diluent volume formula: <strong>(Available Dose in mg × 1000) / (Body Weight in kg × 60 mins × 0.01 mcg)</strong>. Verify pump rate independently before administration.'
+            }
+        };
+
+        const THEME_STYLES = {
+            blue: {
+                banner: 'absolute top-0 left-0 right-0 h-1.5 bg-blue-600',
+                badge: 'inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-800',
+                box: 'bg-blue-50 p-4 rounded-xl border border-blue-100 space-y-3',
+                label: 'block text-xs font-semibold text-blue-800 uppercase tracking-wider mb-0.5',
+                vol: 'text-3xl font-extrabold text-blue-900',
+                ratio: 'text-base sm:text-lg font-bold text-blue-700 bg-blue-100 px-3 py-1 rounded-lg',
+                formula: 'text-[11px] text-blue-600 font-mono',
+                stdBadge: 'text-xs bg-blue-200 text-blue-800 px-2.5 py-0.5 rounded-full font-medium',
+                btn: 'w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-xl shadow-md transition duration-200 flex items-center justify-center space-x-2',
+                note: 'bg-blue-50 border-blue-200 text-blue-900',
+                noteTitle: 'font-bold flex items-center text-blue-800',
+                noteList: 'list-disc list-inside space-y-0.5 text-blue-800 pl-1'
+            },
+            purple: {
+                banner: 'absolute top-0 left-0 right-0 h-1.5 bg-purple-600',
+                badge: 'inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-purple-100 text-purple-800',
+                box: 'bg-purple-50 p-4 rounded-xl border border-purple-100 space-y-3',
+                label: 'block text-xs font-semibold text-purple-800 uppercase tracking-wider mb-0.5',
+                vol: 'text-3xl font-extrabold text-purple-900',
+                ratio: 'text-base sm:text-lg font-bold text-purple-700 bg-purple-100 px-3 py-1 rounded-lg',
+                formula: 'text-[11px] text-purple-600 font-mono',
+                stdBadge: 'text-xs bg-purple-200 text-purple-800 px-2.5 py-0.5 rounded-full font-medium',
+                btn: 'w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold py-3 px-4 rounded-xl shadow-md transition duration-200 flex items-center justify-center space-x-2',
+                note: 'bg-purple-50 border-purple-200 text-purple-900',
+                noteTitle: 'font-bold flex items-center text-purple-800',
+                noteList: 'list-disc list-inside space-y-0.5 text-purple-800 pl-1'
+            },
+            amber: {
+                banner: 'absolute top-0 left-0 right-0 h-1.5 bg-amber-600',
+                badge: 'inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800',
+                box: 'bg-amber-50 p-4 rounded-xl border border-amber-200 space-y-3',
+                label: 'block text-xs font-semibold text-amber-800 uppercase tracking-wider mb-0.5',
+                vol: 'text-3xl font-extrabold text-amber-900',
+                ratio: 'text-base sm:text-lg font-bold text-amber-800 bg-amber-100 px-3 py-1 rounded-lg',
+                formula: 'text-[11px] text-amber-700 font-mono',
+                stdBadge: 'text-xs bg-amber-200 text-amber-900 px-2.5 py-0.5 rounded-full font-medium',
+                btn: 'w-full bg-amber-600 hover:bg-amber-700 text-white font-semibold py-3 px-4 rounded-xl shadow-md transition duration-200 flex items-center justify-center space-x-2',
+                note: 'bg-amber-50 border-amber-200 text-amber-900',
+                noteTitle: 'font-bold flex items-center text-amber-800',
+                noteList: 'list-disc list-inside space-y-0.5 text-amber-800 pl-1'
+            },
+            rose: {
+                banner: 'absolute top-0 left-0 right-0 h-1.5 bg-rose-600',
+                badge: 'inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-rose-100 text-rose-800'
+            }
+        };
+
+        // Initialize Lucide icons
+        lucide.createIcons();
+
+        let currentDrug = 'heparin';
+        let lockedDiluentVolume = 0;
+        let confirmedAvailDose = 0;
+        let confirmedBodyWeight = 0;
+
+        // Populate dropdown alphabetically on startup
+        function renderSortedDrugDropdown(selectedId = 'heparin') {
+            const selectEl = document.getElementById('globalDrugSelector');
+            const sortedDrugs = Object.values(DRUG_PROTOCOLS).sort((a, b) =>
+                a.label.localeCompare(b.label, undefined, { sensitivity: 'base' })
+            );
+
+            selectEl.innerHTML = '';
+            sortedDrugs.forEach(drug => {
+                const opt = document.createElement('option');
+                opt.value = drug.id;
+                opt.textContent = drug.label;
+                if (drug.id === selectedId) opt.selected = true;
+                selectEl.appendChild(opt);
+            });
+        }
+
+        function getActiveProtocol() {
+            return DRUG_PROTOCOLS[currentDrug] || DRUG_PROTOCOLS.heparin;
+        }
+
+        function switchDrugProtocol(drugId) {
+            if (!DRUG_PROTOCOLS[drugId]) return;
+            currentDrug = drugId;
+            document.getElementById('globalDrugSelector').value = drugId;
+
+            const proto = getActiveProtocol();
+            const theme = THEME_STYLES[proto.theme] || THEME_STYLES.blue;
+
+            const hInputs = document.getElementById('heparinInputsGroup');
+            const iInputs = document.getElementById('inotropesInputsGroup');
+            const hOutput = document.getElementById('heparinOutputView');
+            const iOutput = document.getElementById('inotropesOutputView');
+            const protocolInfo = document.getElementById('protocolInfoBox');
+            const headerBadge = document.getElementById('headerBadge');
+            const tab2Label = document.getElementById('tab2Label');
+            const hRef = document.getElementById('heparinReferenceView');
+            const dynRef = document.getElementById('dynamicDrugReferenceView');
+            const microNote = document.getElementById('microProtocolNote');
+            const outputBanner = document.getElementById('outputTopBanner');
+            const outputBadge = document.getElementById('outputBadgeTitle');
+            const confirmBtn = document.getElementById('confirmDilutionBtn');
+
+            headerBadge.style.display = 'inline-flex';
+            headerBadge.innerHTML = proto.headerBadge;
+
+            if (proto.format === 'sliding-scale') {
+                hInputs.style.display = 'block';
+                iInputs.style.display = 'none';
+                protocolInfo.style.display = 'block';
+                hOutput.style.display = 'block';
+                iOutput.style.display = 'none';
+                microNote.style.display = 'none';
+                hRef.style.display = 'block';
+                dynRef.style.display = 'none';
+
+                tab2Label.textContent = proto.tab2Label || 'Sliding Scale Adjustment';
+                document.getElementById('panelTitleText').textContent = 'Patient Initial Parameters';
+                outputBanner.className = THEME_STYLES.rose.banner;
+                outputBadge.className = THEME_STYLES.rose.badge;
+                outputBadge.textContent = 'Initial Commencing Protocol';
+                document.getElementById('outputConcentrationSub').textContent = 'Standard Concentration: 500 units/mL';
+                switchTab('initial');
+            } else {
+                hInputs.style.display = 'none';
+                iInputs.style.display = 'block';
+                protocolInfo.style.display = 'none';
+                hOutput.style.display = 'none';
+                iOutput.style.display = 'block';
+                hRef.style.display = 'none';
+                dynRef.style.display = 'block';
+
+                tab2Label.textContent = 'Ordered Dose & Calibration';
+                document.getElementById('panelTitleText').textContent = 'Step 1: Diluent & Volume Calculation';
+                outputBanner.className = theme.banner;
+                outputBadge.className = theme.badge;
+                outputBadge.textContent = 'Step 1 Preview & Dilution';
+                document.getElementById('outputConcentrationSub').textContent = 'Weight-based Dilution Protocol';
+                confirmBtn.className = theme.btn;
+
+                if (typeof proto.defaultAvailDose === 'number') {
+                    document.getElementById('availDose').value = proto.defaultAvailDose;
+                }
+
+                // Protocol Note Banner
+                if (proto.noteBullets && proto.noteBullets.length > 0) {
+                    microNote.style.display = 'block';
+                    microNote.className = `rounded-xl p-3.5 border text-xs space-y-1.5 ${theme.note}`;
+                    document.getElementById('microProtocolNoteTitle').className = theme.noteTitle;
+                    document.getElementById('microProtocolNoteHeading').textContent = proto.noteHeading || `${proto.shortName} Protocol Parameters`;
+                    const listEl = document.getElementById('microProtocolNoteList');
+                    listEl.className = theme.noteList;
+                    listEl.innerHTML = proto.noteBullets.map(b => `<li>${b}</li>`).join('');
+                } else {
+                    microNote.style.display = 'none';
+                }
+
+                // Reference Guide View
+                document.getElementById('refGuideTitle').textContent = `${proto.shortName} Infusion Reference Guide`;
+                document.getElementById('refGuideSubtitle').textContent = proto.refSubtitle || 'Standard dilution & titration parameters';
+                document.getElementById('refGuideBody').innerHTML = proto.refBody || '';
+                const cardsGrid = document.getElementById('refCardsGrid');
+                cardsGrid.innerHTML = (proto.refCards || []).map(c => `
+                    <div class="p-3.5 rounded-xl border ${c.style}">
+                        <span class="font-bold block mb-1">${c.title}</span>
+                        <span>${c.value}</span>
+                    </div>
+                `).join('');
+
+                document.getElementById('heparinFollowupContainer').style.display = 'block';
+                document.getElementById('inotropesStep2Container').style.display = 'none';
+                updateInotropeStep1Preview();
+                switchTab('initial');
+            }
+            lucide.createIcons();
+        }
+
+        // Tab Switching Logic
+        function switchTab(tabId) {
+            const tabs = ['initial', 'followup', 'reference', 'safety'];
+            tabs.forEach(t => {
+                const tabEl = document.getElementById('tab' + t.charAt(0).toUpperCase() + t.slice(1));
+                if (tabEl) tabEl.style.display = (t === tabId) ? 'block' : 'none';
+                const btn = document.getElementById('tabBtn' + t.charAt(0).toUpperCase() + t.slice(1));
+                if (btn) {
+                    if (t === tabId) {
+                        btn.className = "py-4 px-1 border-b-2 border-rose-600 font-semibold text-sm text-rose-600 flex items-center space-x-2 whitespace-nowrap";
+                    } else {
+                        btn.className = "py-4 px-1 border-b-2 border-transparent font-medium text-sm text-slate-500 hover:text-slate-700 hover:border-slate-300 flex items-center space-x-2 whitespace-nowrap";
+                    }
+                }
+            });
+            lucide.createIcons();
+        }
+
+        // Heparin Initial Calculation Logic
+        function calculateHeparinInitial() {
+            const weight = parseFloat(document.getElementById('initWeight').value) || 75;
+            document.getElementById('initWeightEcho').textContent = weight;
+
+            const rawBolus = weight * 60;
+            const bolusUnits = Math.min(rawBolus, 5000);
+            const bolusMl = bolusUnits / 500;
+
+            const rawUnitsHr = weight * 12;
+            const unitsHr = Math.min(rawUnitsHr, 1000);
+            const rateUnits = unitsHr / weight;
+            const mlHr = unitsHr / 500;
+
+            document.getElementById('initBolusUnits').textContent = bolusUnits.toLocaleString();
+            document.getElementById('initBolusMl').textContent = bolusMl.toFixed(2);
+            document.getElementById('initBolusSub').textContent = `60 units/kg (Raw: ${rawBolus.toLocaleString()} units, Capped at max 5,000 units)`;
+            
+            document.getElementById('initRateUnits').textContent = rateUnits.toFixed(1);
+            document.getElementById('initTotalUnitsHr').textContent = Math.round(unitsHr).toLocaleString();
+            document.getElementById('initRateMl').textContent = mlHr.toFixed(2);
+        }
+
+        // Micro-Infusion Step 1 Preview Logic
+        function getInotropeStep1Values() {
+            const proto = getActiveProtocol();
+            const availDose = parseFloat(document.getElementById('availDose').value) || 0;
+            const bodyWeight = parseFloat(document.getElementById('inotropeWeight').value) || 0;
+            const factor = proto.unitFactor || 1;
+            const threshold = proto.volumeThresholdMl || 50;
+            const shouldDivide = proto.divideWhenAboveThreshold !== false;
+
+            let rawVolume = 0;
+            if (bodyWeight > 0) {
+                rawVolume = (availDose * 1000) / (bodyWeight * 60 * factor);
+            }
+
+            const isDivided = shouldDivide && (rawVolume > threshold);
+            const finalVolume = isDivided ? rawVolume / 2 : rawVolume;
+            const subAnswerLabel = isDivided
+                ? (proto.subLabelAbove || '(1ml=2 mcg)')
+                : (proto.subLabelBelow || '(1ml=1mcg)');
+            const ratioText = isDivided
+                ? (proto.ratioLabelAbove || '1 mL = 2 mcg/kg/min')
+                : (proto.ratioLabelBelow || '1 mL = 1 mcg/kg/min');
+
+            return { availDose, bodyWeight, factor, threshold, rawVolume, finalVolume, isDivided, subAnswerLabel, ratioText };
+        }
+
+        function updateInotropeStep1Preview() {
+            const proto = getActiveProtocol();
+            const theme = THEME_STYLES[proto.theme] || THEME_STYLES.blue;
+            const res = getInotropeStep1Values();
+
+            const previewVol = document.getElementById('previewVolume');
+            const previewSubRatio = document.getElementById('previewSubRatio');
+            const previewRatio = document.getElementById('previewRatio');
+            const badge = document.getElementById('volumeRuleBadge');
+            const previewBox = document.getElementById('inotropePreviewBox');
+            const volLabel = document.getElementById('previewVolLabel');
+            const ratioLabel = document.getElementById('previewRatioLabel');
+            const formulaDisp = document.getElementById('formulaDisplay');
+
+            if (previewBox) previewBox.className = theme.box;
+            if (volLabel) volLabel.className = theme.label;
+            if (ratioLabel) ratioLabel.className = theme.label;
+
+            if (previewVol) {
+                previewVol.innerText = res.finalVolume.toFixed(2) + " mL";
+                previewVol.className = theme.vol;
+            }
+            if (previewSubRatio) {
+                previewSubRatio.innerText = res.subAnswerLabel;
+            }
+            if (previewRatio) {
+                previewRatio.innerText = res.ratioText;
+                previewRatio.className = theme.ratio;
+            }
+            if (formulaDisp) {
+                formulaDisp.innerText = `Formula: (mg × 1000) / (wt × 60 × ${res.factor})`;
+                formulaDisp.className = theme.formula;
+            }
+
+            if (badge) {
+                if (res.isDivided) {
+                    badge.innerText = `Halved (> ${res.threshold} mL rule applied)`;
+                    badge.className = "text-xs bg-rose-200 text-rose-900 px-2.5 py-0.5 rounded-full font-medium";
+                } else {
+                    badge.innerText = `Standard (≤ ${res.threshold} mL)`;
+                    badge.className = theme.stdBadge;
+                }
+            }
+
+            // Update Live Formula Breakdown
+            const totalMcg = res.availDose * 1000;
+            const divisor = res.bodyWeight * 60 * res.factor;
+            document.getElementById('fbFactorText').innerText = `${res.factor} mcg`;
+            document.getElementById('fbFactorVal').innerText = res.factor;
+            document.getElementById('fbDose').innerText = res.availDose;
+            document.getElementById('fbWeight').innerText = res.bodyWeight;
+            document.getElementById('fbTotalMcg').innerText = totalMcg.toLocaleString();
+            document.getElementById('fbDivisor').innerText = Number(divisor.toFixed(4)).toLocaleString();
+            document.getElementById('fbRawResult').innerText = (divisor > 0 ? res.rawVolume.toFixed(3) : "0.00") + " mL";
+        }
+
+        function setQuickDose(val) {
+            document.getElementById('orderedDose').value = val;
+            calculateInotropeInfusion();
+        }
+
+        function confirmInotropeDilution() {
+            const res = getInotropeStep1Values();
+            if (res.bodyWeight <= 0 || res.availDose <= 0) return;
+
+            const proto = getActiveProtocol();
+            lockedDiluentVolume = res.finalVolume;
+            confirmedAvailDose = res.availDose;
+            confirmedBodyWeight = res.bodyWeight;
+
+            document.getElementById('confirmedDrugNameText').innerText = proto.shortName;
+            document.getElementById('printMedName').innerText = proto.label;
+            document.getElementById('confirmedVolumeText').innerText = lockedDiluentVolume.toFixed(2) + " mL";
+            document.getElementById('confirmedDoseText').innerText = confirmedAvailDose + " mg";
+
+            const orderedInput = document.getElementById('orderedDose');
+            const rangeHint = document.getElementById('doseRangeHint');
+            const presetsContainer = document.getElementById('quickDosePresets');
+
+            orderedInput.value = proto.defaultOrderedDose ?? 1;
+            rangeHint.innerText = proto.doseRangeHint || '';
+
+            if (Array.isArray(proto.quickPresets) && proto.quickPresets.length > 0) {
+                presetsContainer.classList.remove('hidden');
+                presetsContainer.innerHTML = proto.quickPresets.map(p => `
+                    <button type="button" onclick="setQuickDose(${p})" class="text-xs bg-amber-100 hover:bg-amber-200 text-amber-900 font-semibold px-2.5 py-1 rounded-lg border border-amber-300 transition">
+                        ${p} mcg/kg/min
+                    </button>
+                `).join('');
+            } else {
+                presetsContainer.classList.add('hidden');
+                presetsContainer.innerHTML = '';
+            }
+
+            document.getElementById('heparinFollowupContainer').style.display = 'none';
+            document.getElementById('inotropesStep2Container').style.display = 'block';
+            switchTab('followup');
+            calculateInotropeInfusion();
+        }
+
+        function editInotropeDilution() {
+            document.getElementById('inotropesStep2Container').style.display = 'none';
+            document.getElementById('heparinFollowupContainer').style.display = 'block';
+            switchTab('initial');
+        }
+
+        function calculateInotropeInfusion() {
+            const proto = getActiveProtocol();
+            const orderedDose = parseFloat(document.getElementById('orderedDose').value) || 0;
+            const totalVolume = lockedDiluentVolume;
+            const totalMcg = confirmedAvailDose * 1000;
+
+            const maxAlert = document.getElementById('maxDoseAlert');
+            if (proto.maxDoseWarning && orderedDose > proto.maxDoseWarning.threshold) {
+                document.getElementById('maxDoseAlertText').innerText = proto.maxDoseWarning.message;
+                maxAlert.classList.remove('hidden');
+            } else {
+                maxAlert.classList.add('hidden');
+            }
+
+            let concentration = totalVolume > 0 ? totalMcg / totalVolume : 0;
+            let mcgPerMin = orderedDose * confirmedBodyWeight;
+
+            let mlPerHour = 0;
+            if (concentration > 0) {
+                mlPerHour = (mcgPerMin * 60) / concentration;
+            }
+
+            document.getElementById('resInfusionRateMl').innerText = mlPerHour > 0 ? mlPerHour.toFixed(2) : "0.00";
+
+            let durationElement = document.getElementById('resDuration');
+            if (mlPerHour > 0 && totalVolume > 0) {
+                let totalHours = totalVolume / mlPerHour;
+                let hours = Math.floor(totalHours);
+                let minutes = Math.round((totalHours - hours) * 60);
+                if (minutes === 60) { hours += 1; minutes = 0; }
+                durationElement.innerText = `${hours} hr ${minutes} min (Total: ${totalVolume.toFixed(2)} mL)`;
+            } else {
+                durationElement.innerText = "N/A (Rate is 0)";
+            }
+
+            verifyCalibrationMatch();
+        }
+
+        function verifyCalibrationMatch() {
+            const c1Str = document.getElementById('check1Input').value;
+            const c2Str = document.getElementById('check2Input').value;
+            const statusEl = document.getElementById('matchStatus');
+
+            if (c1Str === "" || c2Str === "") {
+                statusEl.innerText = "Status: Enter both check values to verify.";
+                statusEl.className = "text-xs font-medium text-slate-500";
+                return;
+            }
+
+            const c1 = parseFloat(c1Str);
+            const c2 = parseFloat(c2Str);
+            const targetRate = parseFloat(document.getElementById('resInfusionRateMl').innerText) || 0;
+
+            if (isNaN(c1) || isNaN(c2)) {
+                statusEl.innerText = "Status: Please enter valid numbers.";
+                statusEl.className = "text-xs font-medium text-slate-500";
+                return;
+            }
+
+            const matchesEachOther = Math.abs(c1 - c2) < 0.01;
+            const matchesTarget = Math.abs(c1 - targetRate) < 0.05;
+
+            if (matchesEachOther && matchesTarget) {
+                statusEl.innerText = "Status: ✓ Dual-Check Verified Successfully (Matches Calculation)";
+                statusEl.className = "text-xs font-bold text-emerald-600";
+            } else if (matchesEachOther) {
+                statusEl.innerText = "Status: ⚠ Checks match each other, but differ from calculated rate!";
+                statusEl.className = "text-xs font-bold text-amber-600";
+            } else {
+                statusEl.innerText = "Status: ⚠ Mismatch between Check 1 and Check 2!";
+                statusEl.className = "text-xs font-bold text-rose-600";
+            }
+        }
+
+        function printCalibrationReport() {
+            const nameInput = document.getElementById('calibratorName').value.trim();
+            if (!nameInput) {
+                alert("Please enter the Calibrator / Verifier Name before printing the report.");
+                document.getElementById('calibratorName').focus();
+                return;
+            }
+
+            document.getElementById('printCalculatedRate').innerText = document.getElementById('resInfusionRateMl').innerText;
+            document.getElementById('printCheck1').innerText = document.getElementById('check1Input').value || "0.00";
+            document.getElementById('printCheck2').innerText = document.getElementById('check2Input').value || "0.00";
+            
+            const now = new Date();
+            document.getElementById('printTimestamp').innerText = now.toLocaleString();
+            document.getElementById('printCalibratorName').innerText = nameInput;
+            document.getElementById('printMetaSection').classList.remove('hidden');
+
+            window.print();
+
+            setTimeout(() => {
+                document.getElementById('printMetaSection').classList.add('hidden');
+            }, 1000);
+        }
+
+        // Heparin Follow-up Calculation Logic
+        function calculateHeparinFollowup() {
+            const weight = parseFloat(document.getElementById('followupWeight').value) || 75;
+            const currentRate = parseFloat(document.getElementById('currentRate').value) || 12;
+            const apttRange = document.getElementById('selectedAptt').value;
+
+            let bolusText = "NIL";
+            let bolusMl = 0;
+            let showBolusMl = false;
+            let bolusSub = "No additional bolus required";
+            let actionText = "";
+            let newRate = currentRate;
+            let repeatText = "6 hours";
+            let badgeText = "";
+            let badgeClass = "";
+            let bannerColor = "";
+
+            switch (apttRange) {
+                case '<1.2':
+                    let b1 = Math.round(weight * 50);
+                    bolusText = `${b1.toLocaleString()} units`;
+                    bolusMl = b1 / 500;
+                    showBolusMl = true;
+                    bolusSub = `50 units/kg (${b1} units)`;
+                    newRate = currentRate + 3;
+                    actionText = `Give bolus of 50 units/kg (${b1} units / ${bolusMl.toFixed(2)} mL). Increase infusion rate by 3 units/kg/hr to ${newRate} units/kg/hr.`;
+                    repeatText = "6 hours";
+                    badgeText = "Sub-therapeutic (< 1.2)";
+                    badgeClass = "bg-amber-100 text-amber-800";
+                    bannerColor = "bg-amber-500";
+                    break;
+                case '1.2-1.4':
+                    let b2 = Math.round(weight * 25);
+                    bolusText = `${b2.toLocaleString()} units`;
+                    bolusMl = b2 / 500;
+                    showBolusMl = true;
+                    bolusSub = `25 units/kg (${b2} units)`;
+                    newRate = currentRate + 2;
+                    actionText = `Give bolus of 25 units/kg (${b2} units / ${bolusMl.toFixed(2)} mL). Increase infusion rate by 2 units/kg/hr to ${newRate} units/kg/hr.`;
+                    repeatText = "6 hours";
+                    badgeText = "Sub-therapeutic (1.2 - 1.4)";
+                    badgeClass = "bg-amber-100 text-amber-800";
+                    bannerColor = "bg-amber-500";
+                    break;
+                case '1.5-2.5':
+                    bolusText = "NIL";
+                    showBolusMl = false;
+                    bolusSub = "No additional bolus required";
+                    newRate = currentRate;
+                    actionText = "Maintain infusion at current rate.";
+                    repeatText = "12 hours";
+                    badgeText = "Therapeutic Range (1.5 - 2.5)";
+                    badgeClass = "bg-emerald-100 text-emerald-800";
+                    bannerColor = "bg-emerald-500";
+                    break;
+                case '2.6-3.0':
+                    bolusText = "NIL";
+                    showBolusMl = false;
+                    bolusSub = "No additional bolus required";
+                    newRate = Math.max(0, currentRate - 2);
+                    actionText = `Decrease infusion by 2 units/kg/hr to ${newRate} units/kg/hr.`;
+                    repeatText = "6 hours";
+                    badgeText = "Supratherapeutic (2.6 - 3.0)";
+                    badgeClass = "bg-blue-100 text-blue-800";
+                    bannerColor = "bg-blue-500";
+                    break;
+                case '3.1-4.0':
+                    bolusText = "NIL";
+                    showBolusMl = false;
+                    bolusSub = "No additional bolus required";
+                    newRate = Math.max(0, currentRate - 3);
+                    actionText = `Withhold for 1 hour, then decrease infusion by 3 units/kg/hr to ${newRate} units/kg/hr.`;
+                    repeatText = "6 hours";
+                    badgeText = "High APTT (3.1 - 4.0)";
+                    badgeClass = "bg-amber-100 text-amber-800";
+                    bannerColor = "bg-amber-500";
+                    break;
+                case '4.1-5.0':
+                    bolusText = "NIL";
+                    showBolusMl = false;
+                    bolusSub = "No additional bolus required";
+                    newRate = Math.max(0, currentRate - 4);
+                    actionText = `Withhold for 2 hours, then decrease infusion by 4 units/kg/hr to ${newRate} units/kg/hr.`;
+                    repeatText = "6 hours";
+                    badgeText = "High APTT (4.1 - 5.0)";
+                    badgeClass = "bg-amber-100 text-amber-800";
+                    bannerColor = "bg-amber-500";
+                    break;
+                case '>5.0':
+                    bolusText = "NIL";
+                    showBolusMl = false;
+                    bolusSub = "No additional bolus required";
+                    newRate = 0;
+                    actionText = "Stop infusion, inform Doctor on-call immediately.";
+                    repeatText = "As requested";
+                    badgeText = "Critical High / Bleeding (> 5.0)";
+                    badgeClass = "bg-rose-100 text-rose-800";
+                    bannerColor = "bg-rose-600";
+                    break;
+            }
+
+            const totalUnitsHr = weight * newRate;
+            const mlHr = totalUnitsHr / 500;
+
+            document.getElementById('followupBolusText').textContent = bolusText;
+            if (showBolusMl) {
+                document.getElementById('followupBolusMl').textContent = bolusMl.toFixed(2);
+                document.getElementById('followupBolusMlContainer').style.display = 'block';
+            } else {
+                document.getElementById('followupBolusMlContainer').style.display = 'none';
+            }
+            document.getElementById('followupBolusSub').textContent = bolusSub;
+            document.getElementById('followupRepeatText').textContent = `In ${repeatText}`;
+            document.getElementById('followupActionText').textContent = actionText;
+            
+            document.getElementById('followupRateUnits').textContent = newRate.toFixed(1);
+            document.getElementById('followupTotalUnitsHr').textContent = Math.round(totalUnitsHr).toLocaleString();
+            document.getElementById('followupRateMl').textContent = mlHr.toFixed(2);
+
+            const badge = document.getElementById('followupBadge');
+            badge.className = `inline-flex items-center px-3 py-1 rounded-full text-xs font-bold ${badgeClass}`;
+            badge.textContent = badgeText;
+
+            document.getElementById('followupBanner').className = `absolute top-0 left-0 right-0 h-1.5 ${bannerColor}`;
+        }
+
+        // APTT Button Selection Handler
+        const apttButtons = document.querySelectorAll('.aptt-btn');
+        apttButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                apttButtons.forEach(b => {
+                    b.removeAttribute('data-selected');
+                    b.className = "aptt-btn px-3 py-2.5 text-xs font-semibold rounded-xl border border-slate-200 bg-white hover:border-rose-500 hover:text-rose-600 transition text-center flex flex-col items-center justify-center";
+                });
+                btn.setAttribute('data-selected', 'true');
+                btn.className = "aptt-btn px-3 py-2.5 text-xs font-semibold rounded-xl border-2 border-rose-500 bg-rose-50 text-rose-900 transition text-center flex flex-col items-center justify-center shadow-sm";
+                
+                const range = btn.getAttribute('data-range');
+                document.getElementById('selectedAptt').value = range;
+                calculateHeparinFollowup();
+            });
+        });
+
+        // Event Listeners
+        document.getElementById('initWeight').addEventListener('input', calculateHeparinInitial);
+        document.getElementById('availDose').addEventListener('input', updateInotropeStep1Preview);
+        document.getElementById('inotropeWeight').addEventListener('input', updateInotropeStep1Preview);
+        document.getElementById('followupWeight').addEventListener('input', calculateHeparinFollowup);
+        document.getElementById('currentRate').addEventListener('input', calculateHeparinFollowup);
+
+        // Run initial calculations on window load
+        window.onload = function() {
+            renderSortedDrugDropdown(currentDrug);
+            calculateHeparinInitial();
+            calculateHeparinFollowup();
+            updateInotropeStep1Preview();
+        };
+    </script>
+</body>
+</html>
